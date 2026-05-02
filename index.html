@@ -240,14 +240,14 @@ class PacMan {
   constructor() { this.reset(); }
 
   reset() {
-    this.x = 13.5 * TILE;
+    this.x = 13 * TILE;
     this.y = 23 * TILE;
     this.dir = DIRS.LEFT;
     this.nextDir = DIRS.LEFT;
     this.mouthAngle = 0;
     this.mouthOpen = true;
     this.mouthTimer = 0;
-    this.speed = 1.6;
+    this.speed = 9;
     this.alive = true;
     this.deathTimer = 0;
     this.deathAngle = 0;
@@ -277,10 +277,10 @@ class Ghost {
     this.x = GHOST_HOME.x * TILE;
     this.y = GHOST_HOME.y * TILE;
     // Offset start positions in house
-    if (this.name === 'Blinky') { this.x = 13.5 * TILE; this.y = 11 * TILE; }
-    if (this.name === 'Pinky')  { this.x = 13.5 * TILE; this.y = 14 * TILE; }
-    if (this.name === 'Inky')   { this.x = 11.5 * TILE; this.y = 14 * TILE; }
-    if (this.name === 'Clyde')  { this.x = 15.5 * TILE; this.y = 14 * TILE; }
+    if (this.name === 'Blinky') { this.x = 13 * TILE; this.y = 11 * TILE; }
+    if (this.name === 'Pinky')  { this.x = 13 * TILE; this.y = 14 * TILE; }
+    if (this.name === 'Inky')   { this.x = 11 * TILE; this.y = 14 * TILE; }
+    if (this.name === 'Clyde')  { this.x = 15 * TILE; this.y = 14 * TILE; }
 
     this.dir = DIRS.LEFT;
     this.mode = (this.name === 'Blinky') ? 'scatter' : 'house';
@@ -288,8 +288,9 @@ class Ghost {
     this.eyes = false;
     this.frightenTimer = 0;
     this.frightenBlink = false;
-    this.speed = 1.6;
-    this.bounceDir = 1; // for house bouncing
+    this.speed = 7.5;
+    this.bounceDir = 1;
+    this.decisionTile = null;
     this.released = (this.name === 'Blinky');
   }
 
@@ -535,25 +536,48 @@ class PacManGame {
   /** Move a single ghost */
   _moveGhost(ghost, dt) {
     if (ghost.mode === 'house') {
-      // Bounce vertically in house
-      ghost.y += ghost.bounceDir * 0.8;
+      ghost.y += ghost.bounceDir * 40 * dt;
       if (ghost.y > 15 * TILE) ghost.bounceDir = -1;
       if (ghost.y < 13 * TILE) ghost.bounceDir = 1;
       return;
     }
 
-    const speed = ghost.eyes ? ghost.speed * 2
+    // Ghost exits house: move to center column then straight up through the door
+    if (ghost.mode === 'exiting') {
+      const exitX = 13 * TILE, exitY = 11 * TILE;
+      const spd = ghost.speed * TILE * dt;
+      if (Math.abs(ghost.x - exitX) > 1) {
+        const step = Math.min(spd, Math.abs(ghost.x - exitX));
+        ghost.x += Math.sign(exitX - ghost.x) * step;
+      } else {
+        ghost.x = exitX;
+        ghost.y -= spd;
+        if (ghost.y <= exitY) {
+          ghost.y = exitY;
+          ghost.mode = 'scatter';
+          ghost.dir = DIRS.LEFT;
+          ghost.decisionTile = null;
+        }
+      }
+      return;
+    }
+
+    const inTunnel = ghost.tileY === 14 && (ghost.tileX <= 5 || ghost.tileX >= 22);
+    const speed = ghost.eyes     ? ghost.speed * 2
                 : ghost.frightened ? ghost.speed * 0.5
-                : (ghost.tileX <= 5 || ghost.tileX >= 22) ? ghost.speed * 0.4
+                : inTunnel       ? ghost.speed * 0.4
                 : ghost.speed;
     const dist = speed * TILE * dt;
 
     const cx = ghost.tileX, cy = ghost.tileY;
-    const snapX = Math.abs(ghost.x - cx * TILE) < dist + 1;
-    const snapY = Math.abs(ghost.y - cy * TILE) < dist + 1;
+    const tileKey = `${cx},${cy}`;
 
-    // At intersection: choose best direction
-    if (snapX && snapY) {
+    // Only pick a new direction when entering a tile center for the first time
+    const snapX = Math.abs(ghost.x - cx * TILE) < TILE * 0.6;
+    const snapY = Math.abs(ghost.y - cy * TILE) < TILE * 0.6;
+
+    if (snapX && snapY && ghost.decisionTile !== tileKey) {
+      ghost.decisionTile = tileKey;
       ghost.x = cx * TILE;
       ghost.y = cy * TILE;
 
@@ -563,50 +587,46 @@ class PacManGame {
 
       for (const key of DIR_KEYS) {
         const d = DIRS[key];
-        // No 180° reversal unless just changed mode
         if (d.x === -ghost.dir.x && d.y === -ghost.dir.y) continue;
         const nc = cx + d.x, nr = cy + d.y;
         if (!this._ghostCanMove(nc, nr, isEyes)) continue;
-        const dist2 = this._dist2(nc, nr, target.x, target.y);
-        if (dist2 < bestDist) { bestDist = dist2; bestDir = d; }
+        const d2 = this._dist2(nc, nr, target.x, target.y);
+        if (d2 < bestDist) { bestDist = d2; bestDir = d; }
       }
 
-      // If no valid direction found (shouldn't happen), allow reversal
       if (!bestDir) {
         for (const key of DIR_KEYS) {
           const d = DIRS[key];
-          const nc = cx + d.x, nr = cy + d.y;
-          if (this._ghostCanMove(nc, nr, isEyes)) { bestDir = d; break; }
+          if (this._ghostCanMove(cx + d.x, cy + d.y, isEyes)) { bestDir = d; break; }
         }
       }
 
       if (bestDir) ghost.dir = bestDir;
     }
 
-    // Move
     ghost.x += ghost.dir.x * dist;
     ghost.y += ghost.dir.y * dist;
     if (ghost.dir.x !== 0) ghost.y = Math.round(ghost.y / TILE) * TILE;
     if (ghost.dir.y !== 0) ghost.x = Math.round(ghost.x / TILE) * TILE;
 
     // Tunnel wrap
-    if (ghost.x < -TILE) ghost.x = COLS * TILE - TILE;
+    if (ghost.x < 0)           ghost.x = (COLS - 1) * TILE;
     if (ghost.x >= COLS * TILE) ghost.x = 0;
 
-    // Eyes reached house
-    if (ghost.eyes && this._dist2(ghost.tileX, ghost.tileY, 13, 14) < 2) {
-      ghost.eyes = false;
-      ghost.frightened = false;
-      ghost.mode = 'house';
-      ghost.x = GHOST_HOME.x * TILE;
-      ghost.y = GHOST_HOME.y * TILE;
-      // Re-release quickly
-      setTimeout(() => {
-        if (ghost.mode === 'house') {
-          ghost.mode = 'scatter';
-          ghost.released = true;
-        }
-      }, 2000);
+    // Eyes arrive back at house center
+    if (ghost.eyes) {
+      const dx = Math.abs(ghost.x - 13 * TILE), dy = Math.abs(ghost.y - 14 * TILE);
+      if (dx < TILE * 0.6 && dy < TILE * 0.6) {
+        ghost.eyes = false;
+        ghost.frightened = false;
+        ghost.mode = 'house';
+        ghost.x = 13 * TILE;
+        ghost.y = 14 * TILE;
+        ghost.decisionTile = null;
+        setTimeout(() => {
+          if (ghost.mode === 'house') { ghost.mode = 'exiting'; }
+        }, 2000);
+      }
     }
   }
 
@@ -620,10 +640,10 @@ class PacManGame {
       this.modeIndex++;
       const newMode = (this.modeIndex % 2 === 0) ? 'scatter' : 'chase';
       this.ghosts.forEach(g => {
-        if (!g.frightened && !g.eyes && g.mode !== 'house') {
+        if (!g.frightened && !g.eyes && g.mode !== 'house' && g.mode !== 'exiting') {
           g.mode = newMode;
-          // Reverse direction on mode change
           g.dir = { x: -g.dir.x, y: -g.dir.y };
+          g.decisionTile = null;
         }
       });
     }
@@ -634,11 +654,7 @@ class PacManGame {
     this.ghosts.forEach(g => {
       if (!g.released && this.dotsEaten >= g.releaseThreshold) {
         g.released = true;
-        // Move ghost to exit
-        g.mode = 'scatter';
-        g.x = GHOST_EXIT.x * TILE;
-        g.y = GHOST_EXIT.y * TILE;
-        g.dir = DIRS.LEFT;
+        g.mode = 'exiting';
       }
     });
   }
@@ -661,16 +677,17 @@ class PacManGame {
       this.map[row][col] = 0;
       this.score += 50;
       this.dotsEaten++;
-      this.ghostCombo = 0;
       this.audio.powerPellet();
       this._checkFruitSpawn();
       // Frighten ghosts
+      this.ghostCombo = 0;
       this.ghosts.forEach(g => {
-        if (!g.eyes && g.mode !== 'house') {
+        if (!g.eyes && g.mode !== 'house' && g.mode !== 'exiting') {
           g.frightened = true;
           g.frightenTimer = 6;
           g.frightenBlink = false;
-          g.dir = { x: -g.dir.x, y: -g.dir.y }; // reverse
+          g.dir = { x: -g.dir.x, y: -g.dir.y };
+          g.decisionTile = null;
         }
       });
     }
@@ -706,7 +723,7 @@ class PacManGame {
   _checkGhostCollisions() {
     const pm = this.pacman;
     this.ghosts.forEach(g => {
-      if (g.mode === 'house' || g.eyes) return;
+      if (g.mode === 'house' || g.mode === 'exiting' || g.eyes) return;
       const dx = Math.abs(pm.x - g.x), dy = Math.abs(pm.y - g.y);
       if (dx < TILE * 0.8 && dy < TILE * 0.8) {
         if (g.frightened) {
