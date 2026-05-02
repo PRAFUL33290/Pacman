@@ -565,7 +565,7 @@ class PacManGame {
     }
 
     const inTunnel = ghost.tileY === 14 && (ghost.tileX <= 5 || ghost.tileX >= 22);
-    const speed = ghost.eyes     ? ghost.speed * 2
+    const speed = ghost.eyes     ? Math.min(ghost.speed * 2, this.pacman.speed)
                 : ghost.frightened ? ghost.speed * 0.5
                 : inTunnel       ? ghost.speed * 0.4
                 : ghost.speed;
