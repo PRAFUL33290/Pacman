@@ -19,6 +19,7 @@ body {
 #gameContainer {
   position: relative;
   display: inline-block;
+  transform-origin: top center;
 }
 canvas {
   display: block;
@@ -288,7 +289,7 @@ class Ghost {
     this.eyes = false;
     this.frightenTimer = 0;
     this.frightenBlink = false;
-    this.speed = 7.5;
+    this.speed = 9;
     this.bounceDir = 1;
     this.decisionTile = null;
     this.released = (this.name === 'Blinky');
@@ -1163,6 +1164,20 @@ class PacManGame {
 
 // ─── BOOTSTRAP ────────────────────────────────────────────────────────────────
 window.addEventListener('load', () => { new PacManGame(); });
+
+// ─── RESPONSIVE SCALING ───────────────────────────────────────────────────────
+function rescale() {
+  const GAME_W = 448;
+  const GAME_H = 64 + 496 + 32; // 592
+  const scale = Math.min(window.innerWidth / GAME_W, window.innerHeight / GAME_H);
+  const container = document.getElementById('gameContainer');
+  container.style.transform = `scale(${scale})`;
+  // Center vertically: offset the top margin to account for scaling shrinkage
+  const scaledH = GAME_H * scale;
+  container.style.marginTop = `${Math.max(0, (window.innerHeight - scaledH) / 2)}px`;
+}
+window.addEventListener('resize', rescale);
+rescale();
 </script>
 </body>
 </html>
