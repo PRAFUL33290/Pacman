@@ -145,6 +145,13 @@ const DIRS = {
 };
 const DIR_KEYS = ['LEFT','RIGHT','UP','DOWN'];
 
+// ─── SPEED BOOST CONSTANTS ────────────────────────────────────────────────────
+const SPEED_BOOST_MULTIPLIER    = 1.6;  // ghost speed factor during burst
+const SPEED_BOOST_MIN_DURATION  = 3;    // minimum burst duration (seconds)
+const SPEED_BOOST_DURATION_RANGE = 2;  // extra random duration range (seconds)
+const SPEED_BOOST_MIN_INTERVAL  = 20;  // minimum time between bursts (seconds)
+const SPEED_BOOST_INTERVAL_RANGE = 15; // extra random interval range (seconds)
+
 // ─── AUDIO ENGINE ─────────────────────────────────────────────────────────────
 class AudioEngine {
   constructor() {
@@ -392,7 +399,7 @@ class PacManGame {
     this.lastTime = 0;
     this.speedBoostActive = false;
     this.speedBoostDuration = 0;
-    this.speedBoostCountdown = 20 + Math.random() * 15;
+    this.speedBoostCountdown = SPEED_BOOST_MIN_INTERVAL + Math.random() * SPEED_BOOST_INTERVAL_RANGE;
 
     this.map = [];
     this.pacman = new PacMan();
@@ -428,7 +435,7 @@ class PacManGame {
     this.ghosts.forEach(g => { g.speedBoost = false; });
     this.speedBoostActive = false;
     this.speedBoostDuration = 0;
-    this.speedBoostCountdown = 20 + Math.random() * 15;
+    this.speedBoostCountdown = SPEED_BOOST_MIN_INTERVAL + Math.random() * SPEED_BOOST_INTERVAL_RANGE;
   }
 
   /** Full game reset */
@@ -668,7 +675,7 @@ class PacManGame {
     const speed = ghost.eyes       ? Math.min(ghost.speed * 2, this.pacman.speed)
                 : ghost.frightened ? ghost.speed * 0.5
                 : inTunnel         ? ghost.speed * 0.4
-                : ghost.speedBoost ? ghost.speed * 1.6
+                : ghost.speedBoost ? ghost.speed * SPEED_BOOST_MULTIPLIER
                 : ghost.speed;
     const dist = speed * TILE * dt;
 
@@ -892,9 +899,9 @@ class PacManGame {
               const target = candidates[Math.floor(Math.random() * candidates.length)];
               target.speedBoost = true;
               this.speedBoostActive = true;
-              this.speedBoostDuration = 3 + Math.random() * 2;
+              this.speedBoostDuration = SPEED_BOOST_MIN_DURATION + Math.random() * SPEED_BOOST_DURATION_RANGE;
             }
-            this.speedBoostCountdown = 20 + Math.random() * 15;
+            this.speedBoostCountdown = SPEED_BOOST_MIN_INTERVAL + Math.random() * SPEED_BOOST_INTERVAL_RANGE;
           }
         } else {
           this.speedBoostDuration -= dt;
@@ -1235,7 +1242,7 @@ class PacManGame {
         ctx.font = '12px "Press Start 2P"';
         ctx.fillText('INSERT COIN', 224, 220);
         ctx.font = '8px "Press Start 2P"';
-        ctx.fillText('PRESS KEY / TAP', 224, 250);
+        ctx.fillText('PRESS ANY KEY OR TAP', 224, 250);
       }
 
       ctx.fillStyle = '#ffb8ae';
