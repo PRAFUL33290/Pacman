@@ -1163,7 +1163,7 @@ class PacManGame {
 }
 
 // ─── BOOTSTRAP ────────────────────────────────────────────────────────────────
-window.addEventListener('load', () => { new PacManGame(); });
+window.addEventListener('load', () => { new PacManGame(); rescale(); });
 
 // ─── RESPONSIVE SCALING ───────────────────────────────────────────────────────
 function rescale() {
@@ -1176,8 +1176,11 @@ function rescale() {
   const scaledH = GAME_H * scale;
   container.style.marginTop = `${Math.max(0, (window.innerHeight - scaledH) / 2)}px`;
 }
-window.addEventListener('resize', rescale);
-rescale();
+let _rescaleTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(_rescaleTimer);
+  _rescaleTimer = setTimeout(rescale, 100);
+});
 </script>
 </body>
 </html>
