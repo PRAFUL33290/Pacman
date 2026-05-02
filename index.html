@@ -1305,21 +1305,25 @@ class PacManGame {
 
 // ─── RESPONSIVE ZOOM ──────────────────────────────────────────────────────────
 const GAME_NATURAL_W = 448;
-const GAME_NATURAL_H = 786; // 64 (ui) + 496 (game) + 32 (status) + 194 (dpad)
+const GAME_NATURAL_H_DESKTOP = 592; // 64 (ui) + 496 (game) + 32 (status) – no dpad
+const GAME_NATURAL_H_MOBILE  = 786; // 64 (ui) + 496 (game) + 32 (status) + 194 (dpad)
+const DPAD_BREAKPOINT = 1025;       // must match the CSS @media (min-width: 1025px)
 const VIEWPORT_PADDING = 0; // no padding – game fills the full viewport
 
 const _gameContainer = document.getElementById('gameContainer');
 
 function resizeGame() {
+  const isDesktop = window.innerWidth >= DPAD_BREAKPOINT;
+  const naturalH  = isDesktop ? GAME_NATURAL_H_DESKTOP : GAME_NATURAL_H_MOBILE;
   const scale = Math.min(
     (window.innerWidth  - VIEWPORT_PADDING * 2) / GAME_NATURAL_W,
-    (window.innerHeight - VIEWPORT_PADDING * 2) / GAME_NATURAL_H
+    (window.innerHeight - VIEWPORT_PADDING * 2) / naturalH
   );
   _gameContainer.style.transform = `scale(${scale})`;
   // CSS transform does not affect layout flow; compensate with margins so the
   // flex container still centres the visually-scaled element correctly.
   const mx = Math.floor(GAME_NATURAL_W * (scale - 1) / 2);
-  const my = Math.floor(GAME_NATURAL_H * (scale - 1) / 2);
+  const my = Math.floor(naturalH * (scale - 1) / 2);
   _gameContainer.style.margin = `${my}px ${mx}px`;
 }
 
