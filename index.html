@@ -290,7 +290,7 @@ class Ghost {
     this.eyes = false;
     this.frightenTimer = 0;
     this.frightenBlink = false;
-    this.speed = 7.5;
+    this.speed = (this.name === 'Inky') ? 4.5 : 7.5;
     this.bounceDir = 1;
     this.decisionTile = null;
     this.released = (this.name === 'Blinky');
